@@ -172,6 +172,15 @@ static struct obs_audio_data *auto_gain_filter_audio(void *data,
     return audio;
 }
 
+static void auto_gain_defaults(obs_data_t *settings)
+{
+    obs_data_set_default_double(settings, "target_db", -18.0);
+    obs_data_set_default_double(settings, "max_boost_db", 12.0);
+    obs_data_set_default_double(settings, "max_cut_db", 12.0);
+    obs_data_set_default_double(settings, "gate_db", -55.0);
+    obs_data_set_default_double(settings, "attack_ms", 80.0);
+    obs_data_set_default_double(settings, "release_ms", 500.0);
+}
 static obs_properties_t *auto_gain_properties(void *unused)
 {
     UNUSED_PARAMETER(unused);
@@ -194,5 +203,6 @@ struct obs_source_info auto_gain_filter = {
     .destroy = auto_gain_destroy,
     .update = auto_gain_update,
     .get_properties = auto_gain_properties,
+    .get_defaults = auto_gain_defaults,
     .filter_audio = auto_gain_filter_audio,
 };

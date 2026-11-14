@@ -55,14 +55,25 @@ static void auto_gain_update(void *data, obs_data_t *settings)
 static void *auto_gain_create(obs_data_t *settings, obs_source_t *source)
 {
     UNUSED_PARAMETER(source);
+
     struct auto_gain_data *f = bzalloc(sizeof(*f));
-    struct obs_audio_info ai = {0};
+    audio_t *audio = obs_get_audio();
 
     f->gain = 1.0f;
-    f->sample_rate = obs_get_audio_info(&ai) ? ai.samples_per_sec : 48000;
-    f->channels = obs_get_audio_info(&ai) ? get_audio_channels(ai.speakers) : 2;
-    if (f->sample_rate == 0) f->sample_rate = 48000;
-    if (f->channels == 0 || f->channels > MAX_AV_PLANES) f->channels = 2;
+
+    f->sample_rate = audio
+        ? audio_output_get_sample_rate(audio)
+        : 48000;
+
+    f->channels = audio
+        ? (uint32_t)audio_output_get_channels(audio)
+        : 2;
+
+    if (f->sample_rate == 0)
+        f->sample_rate = 48000;
+
+    if (f->channels == 0 || f->channels > MAX_AV_PLANES)
+        f->channels = 2;
 
     obs_data_set_default_double(settings, "target_db", -18.0);
     obs_data_set_default_double(settings, "max_boost_db", 12.0);
@@ -70,7 +81,9 @@ static void *auto_gain_create(obs_data_t *settings, obs_source_t *source)
     obs_data_set_default_double(settings, "gate_db", -55.0);
     obs_data_set_default_double(settings, "attack_ms", 80.0);
     obs_data_set_default_double(settings, "release_ms", 500.0);
+
     auto_gain_update(f, settings);
+
     return f;
 }
 

@@ -131,7 +131,9 @@ static struct obs_audio_data *auto_gain_filter_audio(void *data,
     if (rms >= gate && rms > LINEAR_FLOOR) {
         desired = db_to_linear(f->target_db) / rms;
     }
-
+ /* Never amplify noise above unity gain below the noise gate. */
+    if (rms < gate && f->gain > 1.0f)
+        f->gain = 1.0f;
     /* Apply configured gain limits. */
     desired = fminf(db_to_linear(f->max_boost_db),
                     fmaxf(db_to_linear(-f->max_cut_db), desired));

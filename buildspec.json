@@ -9,7 +9,7 @@
             }
         },
         "prebuilt": {
-            "version": "2025-07-11",
+            "version": "2026-10-23",
             "baseUrl": "https://github.com/obsproject/obs-deps/releases/download",
             "label": "Pre-Built obs-deps",
             "hashes": {

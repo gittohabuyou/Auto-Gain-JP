@@ -90,9 +90,10 @@ static void auto_gain_destroy(void *data)
 }
 
 static struct obs_audio_data *auto_gain_filter_audio(void *data,
-                                                       struct obs_audio_data *audio)
+                                                      struct obs_audio_data *audio)
 {
     struct auto_gain_data *f = data;
+
     if (!audio || audio->frames == 0)
         return audio;
 
@@ -100,48 +101,74 @@ static struct obs_audio_data *auto_gain_filter_audio(void *data,
     float peak = 0.0f;
     uint64_t count = 0;
 
+    /* Measure RMS and peak across all available channels. */
     for (uint32_t ch = 0; ch < f->channels; ch++) {
-        if (!audio->data[ch]) continue;
+        if (!audio->data[ch])
+            continue;
+
         float *samples = (float *)audio->data[ch];
+
         for (uint32_t i = 0; i < audio->frames; i++) {
             float x = samples[i];
+
+            if (!isfinite(x))
+                continue;
+
             sum_sq += (double)x * (double)x;
             peak = fmaxf(peak, fabsf(x));
             count++;
         }
     }
-    if (!count) return audio;
+
+    if (!count)
+        return audio;
 
     float rms = (float)sqrt(sum_sq / (double)count);
+    float gate = db_to_linear(f->gate_db);
     float desired = 1.0f;
 
-    /* Do not raise the gain when the input is below the noise gate. */
-    if (rms >= db_to_linear(f->gate_db))
-        desired = db_to_linear(f->target_db) / fmaxf(rms, LINEAR_FLOOR);
+    /* Do not increase gain below the noise gate. */
+    if (rms >= gate && rms > LINEAR_FLOOR) {
+        desired = db_to_linear(f->target_db) / rms;
+    }
 
+    /* Apply configured gain limits. */
     desired = fminf(db_to_linear(f->max_boost_db),
                     fmaxf(db_to_linear(-f->max_cut_db), desired));
 
-    /* Keep the block peak below full scale. */
+    /* Prevent the measured block peak from exceeding the safety level. */
     if (peak > 0.0f)
         desired = fminf(desired, 0.98f / peak);
 
-    /* Faster gain reduction, slower gain increase. */
+    /* Smooth gain changes. */
     float ms = desired < f->gain ? f->attack_ms : f->release_ms;
     float dt = (float)audio->frames / (float)f->sample_rate;
     float tau = fmaxf(ms / 1000.0f, 0.001f);
     float alpha = 1.0f - expf(-dt / tau);
+
     f->gain += (desired - f->gain) * alpha;
 
+    /* Enforce the peak safety limit immediately. */
     if (peak > 0.0f && peak * f->gain > 0.98f)
         f->gain = 0.98f / peak;
 
+    /* Apply gain to every available channel. */
     for (uint32_t ch = 0; ch < f->channels; ch++) {
-        if (!audio->data[ch]) continue;
+        if (!audio->data[ch])
+            continue;
+
         float *samples = (float *)audio->data[ch];
-        for (uint32_t i = 0; i < audio->frames; i++)
+
+        for (uint32_t i = 0; i < audio->frames; i++) {
+            if (!isfinite(samples[i])) {
+                samples[i] = 0.0f;
+                continue;
+            }
+
             samples[i] *= f->gain;
+        }
     }
+
     return audio;
 }
 

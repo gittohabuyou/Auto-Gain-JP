@@ -29,10 +29,7 @@ static float db_to_linear(float db)
     return powf(10.0f, db / 20.0f);
 }
 
-static float linear_to_db(float value)
-{
-    return 20.0f * log10f(fmaxf(value, LINEAR_FLOOR));
-}
+
 
 static void auto_gain_update(void *data, obs_data_t *settings)
 {

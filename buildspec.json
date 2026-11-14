@@ -29,6 +29,11 @@
             }
         }
     },
+    "platformConfig": {
+        "macos": {
+            "bundleId": "com.gittohabuyou.autogainjp"
+        }        
+    },
     "name": "auto-gain-jp",
     "displayName": "Auto Gain JP",
     "version": "1.0.0",

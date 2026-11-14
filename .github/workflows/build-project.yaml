@@ -71,7 +71,7 @@ jobs:
             echo "pluginName=${plugin_name}" >> $GITHUB_OUTPUT
           fi
 
- macos-build:
+  macos-build:
     name: Build for macOS 🍏
     if: false
     runs-on: macos-15

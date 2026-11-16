@@ -1,1 +1,46 @@
+name: Format Source Code 🛠️
 
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format-source:
+    name: Format auto-gain.c
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install clang-format-19
+        shell: bash
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
+          echo "/home/linuxbrew/.linuxbrew/opt/clang-format@19/bin" >> "$GITHUB_PATH"
+          brew install --quiet obsproject/tools/clang-format@19
+
+      - name: Format auto-gain.c
+        shell: bash
+        run: |
+          clang-format-19 --version
+          clang-format-19 -style=file -fallback-style=none -i src/auto-gain.c
+
+      - name: Create ZIP archive
+        shell: bash
+        run: |
+          mkdir -p formatted-source
+          cp src/auto-gain.c formatted-source/auto-gain.c
+          cd formatted-source
+          zip ../formatted-auto-gain.zip auto-gain.c
+
+      - name: Upload formatted file
+        uses: actions/upload-artifact@v4
+        with:
+          name: formatted-auto-gain
+          path: formatted-auto-gain.zip
+          if-no-files-found: error
+          retention-days: 7

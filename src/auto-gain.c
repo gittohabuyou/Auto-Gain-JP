@@ -130,8 +130,7 @@ static struct obs_audio_data *auto_gain_filter_audio(void *data, struct obs_audi
 		f->gain = 1.0f;
 
 	/* Apply configured gain limits. */
-	desired = fminf(db_to_linear(f->max_boost_db),
-			fmaxf(db_to_linear(-f->max_cut_db), desired));
+	desired = fminf(db_to_linear(f->max_boost_db), fmaxf(db_to_linear(-f->max_cut_db), desired));
 
 	/* Prevent the measured block peak from exceeding the safety level. */
 	if (peak > 0.0f)

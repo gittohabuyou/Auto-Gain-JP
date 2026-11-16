@@ -142,34 +142,39 @@ static struct obs_audio_data *auto_gain_filter_audio(void *data,
     if (peak > 0.0f)
         desired = fminf(desired, 0.98f / peak);
 
-    /* Smooth gain changes. */
+   /* Smooth gain changes for every audio sample. */
     float ms = desired < f->gain ? f->attack_ms : f->release_ms;
-    float dt = (float)audio->frames / (float)f->sample_rate;
     float tau = fmaxf(ms / 1000.0f, 0.001f);
-    float alpha = 1.0f - expf(-dt / tau);
 
-    f->gain += (desired - f->gain) * alpha;
+    float alpha = 1.0f - expf(
+        -1.0f / ((float)f->sample_rate * tau));
 
-    /* Enforce the peak safety limit immediately. */
+    /* Enforce the peak safety limit immediately when necessary. */
     if (peak > 0.0f && peak * f->gain > 0.98f)
         f->gain = 0.98f / peak;
 
-    /* Apply gain to every available channel. */
-    for (uint32_t ch = 0; ch < f->channels; ch++) {
-        if (!audio->data[ch])
-            continue;
+    float current_gain = f->gain;
 
-        float *samples = (float *)audio->data[ch];
+    /* Apply a smoothly changing gain to every available channel. */
+    for (uint32_t i = 0; i < audio->frames; i++) {
+        current_gain += (desired - current_gain) * alpha;
 
-        for (uint32_t i = 0; i < audio->frames; i++) {
+        for (uint32_t ch = 0; ch < f->channels; ch++) {
+            if (!audio->data[ch])
+                continue;
+
+            float *samples = (float *)audio->data[ch];
+
             if (!isfinite(samples[i])) {
                 samples[i] = 0.0f;
                 continue;
             }
 
-            samples[i] *= f->gain;
+            samples[i] *= current_gain;
         }
     }
+
+    f->gain = current_gain;
 
     return audio;
 }
